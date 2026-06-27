@@ -1,0 +1,35 @@
+{
+  "name": "agentic-pipeline",
+  "version": "0.1.0",
+  "description": "Delegated project pipeline standardization for Codex.",
+  "author": {
+    "name": "SkylarHu",
+    "url": "https://github.com/whofly2016"
+  },
+  "homepage": "https://github.com/BestQ-A/agentic-pipeline",
+  "repository": "https://github.com/BestQ-A/agentic-pipeline",
+  "keywords": [
+    "codex",
+    "omx",
+    "agents",
+    "pipeline",
+    "skills"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Agentic Pipeline",
+    "shortDescription": "Standardize project R&D loops with role agents.",
+    "longDescription": "Agentic Pipeline adds a Codex skill for turning ad hoc project work into an evidence-backed state machine with role ownership, validation gates, retained artifacts, and repeatable project guidance.",
+    "developerName": "SkylarHu",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use $agentic-pipeline for this project.",
+      "Standardize this repo's agent pipeline.",
+      "Audit project guidance and validation gates."
+    ]
+  }
+}

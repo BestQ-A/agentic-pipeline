@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agentic Pipeline"
+  short_description: "Delegate project pipeline standardization through role agents."
+  default_prompt: "Use $agentic-pipeline to define a project R&D pipeline, spawn role agents, and standardize project agents, rules, and skills without direct implementation by the leader."
