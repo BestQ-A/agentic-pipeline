@@ -1,6 +1,8 @@
 .omx/
 .codex/
-.agents/
+.agents/*
+!.agents/plugins/
+!.agents/plugins/marketplace.json
 *.log
 *.tmp
 *.cache

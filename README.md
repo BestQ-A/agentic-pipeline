@@ -33,7 +33,7 @@ The skill expects a project context and will audit local guidance, scripts, skil
 
 ## Included Files
 
-- `marketplace.json`: Codex marketplace entry for this repository.
+- `.agents/plugins/marketplace.json`: Codex marketplace entry for this repository.
 - `plugins/agentic-pipeline/.codex-plugin/plugin.json`: Plugin manifest.
 - `plugins/agentic-pipeline/skills/agentic-pipeline/SKILL.md`: Skill instructions.
 - `plugins/agentic-pipeline/skills/agentic-pipeline/scripts/audit_project_surfaces.ps1`: Read-only project surface audit script.
