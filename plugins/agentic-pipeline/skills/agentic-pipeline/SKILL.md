@@ -1,13 +1,22 @@
 ---
 name: agentic-pipeline
-description: User-level command for delegated project pipeline standardization. Use when the user asks Codex to stop directly implementing and instead remember the goal, decompose it, define a research/development pipeline, spawn role agents, and manage those agents to improve project-local agent definitions, folder rules, AGENTS/CLAUDE guidance, and project skills until the pipeline is standardized and verified.
+description: User-level command for delegated project pipeline standardization. Use when the user asks Codex or Claude Code to stop directly implementing and instead remember the goal, decompose it, define a research/development pipeline, spawn role agents, and manage those agents to improve project-local agent definitions, folder rules, AGENTS/CLAUDE guidance, and project skills until the pipeline is standardized and verified.
 ---
 
 # Agentic Pipeline
 
 ## Overview
 
-Use this skill as a command surface for agent-led project standardization. The leader owns goal memory, decomposition, delegation, integration, and verification; substantive implementation work is assigned to role agents with explicit `agent_type` whenever native subagents are available.
+Use this skill as a command surface for agent-led project standardization. The leader owns goal memory, decomposition, delegation, integration, and verification; substantive implementation work is assigned to role agents with explicit role identity whenever native subagents are available.
+
+## Runtime Compatibility
+
+This same skill can be packaged for Codex CLI and Claude Code.
+
+- In Codex, users normally invoke it as `$agentic-pipeline`; use Codex native subagents with explicit `agent_type` when available.
+- In Claude Code, users install it as a Claude plugin and invoke the installed skill through Claude Code's skill/plugin surface; use Claude Code's available subagent/task mechanism and keep the fixed logical agent name in every handoff.
+- Resolve bundled scripts relative to this `SKILL.md` location. Do not hard-code a user's home directory or a local development checkout path.
+- Keep shared project artifacts runtime-neutral where possible: `.pipeline/dashboard`, project `AGENTS.md`, folder-local guidance, scripts, fixtures, and validation logs.
 
 ## Intelligence Loop Principle
 
@@ -423,7 +432,8 @@ Review and improve only the artifacts relevant to the active project:
 Run:
 
 ```powershell
-& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoProfile -ExecutionPolicy Bypass -File 'C:\Users\61643\.codex\skills\agentic-pipeline\scripts\audit_project_surfaces.ps1' -ProjectRoot '<project-root>'
+$SkillRoot = '<installed-skill-root-containing-this-SKILL.md>'
+& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillRoot 'scripts/audit_project_surfaces.ps1') -ProjectRoot '<project-root>'
 ```
 
 By default the script only reads and emits JSON to stdout. Use `-OutputPath <project-root-relative-or-contained-report.json>` when a durable artifact is useful; the script refuses output outside the project root and refuses overwrite unless `-Force` is supplied.

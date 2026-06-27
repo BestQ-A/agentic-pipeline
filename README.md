@@ -1,15 +1,17 @@
 # Agentic Pipeline
 
-Agentic Pipeline packages the `$agentic-pipeline` Codex skill (and a parallel
-Devin skill `/agentic-pipeline`) for reusable project pipeline standardization.
+Agentic Pipeline packages the `$agentic-pipeline` Codex skill, a Claude Code
+plugin skill, and a parallel Devin skill `/agentic-pipeline` for reusable
+project pipeline standardization.
 It helps an agent define project workflow states, delegate role-agent work,
 capture validation evidence, and retain repeatable project artifacts.
 
-Two runtimes are supported:
+Three runtimes are supported:
 
 | Runtime | Trigger | Skill location | Subagent mechanism |
 | --- | --- | --- | --- |
 | Codex CLI | `$agentic-pipeline` | `plugins/agentic-pipeline/skills/agentic-pipeline/SKILL.md` | native subagents / OMX |
+| Claude Code | installed skill/plugin surface | `plugins/agentic-pipeline/skills/agentic-pipeline/SKILL.md` | Claude Code task/subagent surface when available |
 | Devin CLI | `/agentic-pipeline` | `.devin/skills/agentic-pipeline/SKILL.md` | `run_subagent` + custom `AGENT.md` profiles |
 
 ---
@@ -53,6 +55,38 @@ Agentic Pipeline maintains a central project dashboard at
 for macro/orchestration answers, while goal-specific questions are routed to the
 logical agent that owns the relevant goal slice when the dashboard is stale or
 incomplete.
+
+---
+
+## Claude Code
+
+### Install From GitHub
+
+```powershell
+claude plugin marketplace add BestQ-A/agentic-pipeline --sparse .claude-plugin plugins
+claude plugin install agentic-pipeline@agentic-pipeline
+```
+
+Restart Claude Code after installation so the packaged skill is loaded.
+
+### Install From A Local Clone
+
+```powershell
+git clone https://github.com/BestQ-A/agentic-pipeline C:\tools\agentic-pipeline
+cd C:\tools\agentic-pipeline
+claude plugin marketplace add ./ --scope user
+claude plugin install agentic-pipeline@agentic-pipeline
+```
+
+### Use (Claude Code)
+
+Ask Claude Code to use the installed Agentic Pipeline skill for a target
+project. The skill keeps the same state-machine, preflight, dashboard, and
+goal-ownership contract as the Codex package.
+
+The central dashboard paths are shared across runtimes:
+`.pipeline/dashboard/agentic-pipeline-dashboard.json` and
+`.pipeline/dashboard/agentic-pipeline-dashboard.md`.
 
 ---
 
@@ -145,6 +179,13 @@ Codex surface:
 - `plugins/agentic-pipeline/skills/agentic-pipeline/SKILL.md`: Codex skill instructions.
 - `plugins/agentic-pipeline/skills/agentic-pipeline/scripts/audit_project_surfaces.ps1`: Read-only project surface audit script.
 
+Claude Code surface:
+
+- `.claude-plugin/marketplace.json`: Claude Code marketplace entry for this repository.
+- `plugins/agentic-pipeline/.claude-plugin/plugin.json`: Claude Code plugin manifest.
+- `plugins/agentic-pipeline/skills/agentic-pipeline/SKILL.md`: Shared Codex/Claude skill instructions.
+- `plugins/agentic-pipeline/skills/agentic-pipeline/scripts/update_agent_dashboard.ps1`: Dashboard updater used by the shared skill.
+
 Devin surface:
 
 - `.devin/skills/agentic-pipeline/SKILL.md`: Devin skill instructions (slash command `/agentic-pipeline`).
@@ -159,10 +200,19 @@ Runtime state, logs, caches, `.omx`, local credentials, and generated artifacts 
 From this repository root:
 
 ```powershell
-python C:\Users\61643\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py .\plugins\agentic-pipeline
-python C:\Users\61643\.codex\skills\.system\skill-creator\scripts\quick_validate.py .\plugins\agentic-pipeline\skills\agentic-pipeline
+python <codex-home>\skills\.system\plugin-creator\scripts\validate_plugin.py .\plugins\agentic-pipeline
+python <codex-home>\skills\.system\skill-creator\scripts\quick_validate.py .\plugins\agentic-pipeline\skills\agentic-pipeline
 .\plugins\agentic-pipeline\skills\agentic-pipeline\scripts\validate_agentic_pipeline_contract.ps1 -SkillRoot .\plugins\agentic-pipeline\skills\agentic-pipeline
 .\plugins\agentic-pipeline\skills\agentic-pipeline\scripts\update_agent_dashboard.ps1 -ProjectRoot . -LogicalAgent leader -Role leader -Status ready -OwnsGoalSlices orchestration -Objective "validate dashboard updater" -CurrentState dashboard_smoke -Summary "dashboard updater smoke test"
+```
+
+## Validate (Claude Code)
+
+From this repository root:
+
+```powershell
+claude plugin validate .\plugins\agentic-pipeline --strict
+claude plugin validate .\.claude-plugin\marketplace.json --strict
 ```
 
 ## Validate (Devin)

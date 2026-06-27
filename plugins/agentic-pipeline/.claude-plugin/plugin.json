@@ -1,0 +1,20 @@
+{
+  "name": "agentic-pipeline",
+  "version": "0.1.4",
+  "description": "Delegated project pipeline standardization for Claude Code.",
+  "author": {
+    "name": "SkylarHu",
+    "email": ""
+  },
+  "homepage": "https://github.com/BestQ-A/agentic-pipeline",
+  "repository": "https://github.com/BestQ-A/agentic-pipeline",
+  "license": "Apache-2.0",
+  "keywords": [
+    "claude-code",
+    "agents",
+    "pipeline",
+    "skills",
+    "dashboard"
+  ],
+  "skills": "./skills/"
+}

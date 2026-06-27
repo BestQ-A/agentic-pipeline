@@ -1,4 +1,6 @@
 .omx/
+.omc/
+.claude/
 .codex/
 .agents/*
 !.agents/plugins/

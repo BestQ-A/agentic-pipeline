@@ -1,0 +1,17 @@
+{
+  "name": "agentic-pipeline",
+  "owner": {
+    "name": "SkylarHu",
+    "email": ""
+  },
+  "metadata": {
+    "description": "Agentic Pipeline plugin marketplace for Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "agentic-pipeline",
+      "source": "./plugins/agentic-pipeline",
+      "description": "Standardize project R&D loops with role agents, dashboard ownership, preflight gates, and validation evidence."
+    }
+  ]
+}
