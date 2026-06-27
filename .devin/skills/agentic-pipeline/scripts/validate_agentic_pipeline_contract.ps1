@@ -35,6 +35,12 @@ $requiredMarkers = [ordered]@{
     subagentGuidance = 'guidance_followed:'
     subagentPreflight = 'preflight_used:'
     retentionCorrection = 'update the owning project skill with a new preflight check'
+    dashboardMacroAnswer = 'The leader may answer directly for macro/orchestration questions'
+    routeWhenSpecific = 'The leader must route or refresh before answering'
+    goalOwnership = '## Goal Ownership And Question Routing'
+    centralDashboard = '## Central Dashboard Contract'
+    dashboardUpdate = 'dashboard_update:'
+    ownsGoalSlices = 'owns_goal_slices:'
 }
 
 foreach ($entry in $requiredMarkers.GetEnumerator()) {

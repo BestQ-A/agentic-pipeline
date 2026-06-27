@@ -119,7 +119,8 @@ Typical checks to encode in project skills/scripts:
 
 When this skill is active:
 
-- Do not directly implement project changes in the leader lane. Leader-only bootstrapping means non-mutating setup: goal ledger, audit runs, plan integration, handoff prompts, and verification routing.
+- Do not directly implement project changes in the leader lane. Leader-only bootstrapping means non-mutating setup: team coverage, goal ownership, audit runs, plan integration, handoff prompts, dashboard synchronization, and verification routing.
+- Do not treat the leader as the all-knowing project context holder. The leader owns orchestration completeness; fixed logical agents own their delegated goal slices, current facts, open questions, and answer authority for those slices.
 - Keep a visible goal statement with target result, constraints, acceptance criteria, evidence required, and stop condition.
 - Keep a visible loop state. State the current named state, the next allowed transition, validation evidence, and stop condition before giving process detail.
 - Keep a visible guidance binding and environment preflight status before assigning implementation, build, run, deploy, or validation work.
@@ -133,6 +134,97 @@ When this skill is active:
 - In Codex App outside tmux, do not rely on OMX `team`, `hud`, or `question` runtime surfaces unless an attached tmux OMX CLI shell is available.
 - Preserve unrelated files and local changes. Keep edits project-scoped unless the user explicitly asks for user-level changes.
 
+## Goal Ownership And Question Routing
+
+Agentic Pipeline uses a distributed knowledge model. The leader is a conductor and verifier, not the sole memory of every project detail.
+
+Required ownership map:
+
+```text
+goal_ownership_map:
+  project_root: <absolute path>
+  dashboard_path: <project-local dashboard path>
+  logical_agents:
+    - name: <stable logical agent name>
+      role: <explore|planner|architect|executor|test-engineer|code-reviewer|verifier|writer|custom>
+      owns_goal_slices:
+        - <goal/context area this agent owns>
+      answers_questions_about:
+        - <question categories this agent should answer or validate>
+      required_sources:
+        - <files, logs, scripts, dashboard sections, or artifacts>
+      stale_after: <duration or event that requires refresh>
+      current_status: <pending|ready|blocked|needs-human|complete>
+```
+
+Question routing rules:
+
+- If the user asks a question whose answer depends on a goal slice owned by a logical agent, route the question to that agent or use that agent's latest dashboard entry. The leader may summarize and integrate, but must not invent the answer from general context.
+- If no owner exists for the question, the leader first creates or assigns one, updates the ownership map, and then routes the question.
+- If the owner's dashboard entry is stale, missing evidence, or conflicts with newer user evidence, refresh the owner before answering.
+- The leader may answer directly for macro/orchestration questions when the central dashboard already contains enough current evidence. Examples: team coverage, current loop state, blockers, missing roles, dashboard contents, routing decisions, next synchronization point, and verified cross-agent summaries already present in the dashboard.
+- The leader must route or refresh before answering when the question requires unpublished implementation facts, local runtime state, unresolved owner judgment, fresh test results, or details inside a goal slice whose dashboard entry is stale or incomplete.
+- Every routed answer must update the dashboard with `answered_question`, `answer_owner`, `evidence`, and any `new_open_questions`.
+
+## Central Dashboard Contract
+
+Every Agentic Pipeline run must maintain a project-local central dashboard. This is the shared state surface between the leader, subagents, and future sessions.
+
+Default paths:
+
+```text
+central_dashboard:
+  json: .pipeline/dashboard/agentic-pipeline-dashboard.json
+  markdown: .pipeline/dashboard/agentic-pipeline-dashboard.md
+```
+
+Dashboard minimum schema:
+
+```text
+dashboard:
+  project_root: <absolute path>
+  updated_at: <timestamp>
+  leader_state:
+    objective: <current mission>
+    current_state: <loop state>
+    stop_condition: <complete|blocked|unsafe|needs-human>
+  coverage:
+    required_roles: <roles needed>
+    active_logical_agents: <agents assigned>
+    missing_roles: <roles not yet covered>
+  goal_ownership_map: <owners and slices>
+  guidance_binding: <latest guidance binding or path>
+  environment_preflight: <latest preflight or path>
+  agent_updates:
+    - logical_agent: <name>
+      role: <role>
+      status: <pending|ready|blocked|needs-human|complete>
+      owns_goal_slices: <slices>
+      summary: <latest concise state>
+      evidence: <files, commands, logs, reports>
+      open_questions: <questions owned by this agent>
+      next_action: <next agent or leader action>
+      updated_at: <timestamp>
+  question_routes:
+    - question: <user or leader question>
+      owner: <logical agent>
+      status: <routed|answered|blocked>
+      evidence: <dashboard entry or agent result>
+  decisions:
+    - decision: <decision made>
+      owner: <leader or logical agent>
+      evidence: <supporting artifacts>
+```
+
+Dashboard synchronization rules:
+
+- Create or update the dashboard before spawning implementation agents.
+- Update the dashboard after every subagent result, blocker, human-action request, routed question answer, and verifier decision.
+- Before answering a user question, consult the dashboard and route to the owning agent when the dashboard is missing or stale.
+- Before final response, ensure the dashboard lists coverage, owners, current statuses, blockers, evidence, and retained artifacts.
+- If the dashboard cannot be written, the loop state is `blocked` for implementation/deploy/test claims; the leader may still explain the blocker and the exact write failure.
+- Prefer using `scripts/update_agent_dashboard.ps1` for dashboard writes. If the project needs richer behavior, evolve that script or create a project-local dashboard updater rather than relying on prose.
+
 ## Workflow
 
 1. Establish the mission ledger.
@@ -140,6 +232,7 @@ When this skill is active:
    - Define success criteria for a standardized project pipeline: stages, role ownership, local rules, local skills, validation commands, and review gates.
    - Define the initial loop state, allowed state transitions, evidence required per transition, and retention rule for successful iterations.
    - Identify irreversible or external-production boundaries.
+   - Define the initial `goal_ownership_map` and central dashboard path.
 
 2. Capture repeatable project evidence.
    - Run `scripts/audit_project_surfaces.ps1 -ProjectRoot <path>` from this skill before assigning implementation work.
@@ -152,6 +245,7 @@ When this skill is active:
    - Produce or run the `environment_preflight` object for the current task branch.
    - If no project preflight exists but machine state can affect correctness, create a project-local preflight script/check first.
    - Mark unavailable or failed preflight checks as `blocked`, `unsafe`, or `needs-human`; do not downgrade them to warnings.
+   - Initialize or update the central dashboard with the guidance binding, preflight status, and goal ownership map.
 
 4. Define the loop before delegation.
    - State current state, target state, allowed transitions, validation signal, failure states, and durable learning target.
@@ -165,6 +259,7 @@ When this skill is active:
    - `architect`: define ownership boundaries between global guidance, project guidance, agent prompts, folder rules, skills, scripts, and tests.
    - `scriptification-engineer` or `test-engineer`: turn recurring diagnostic or decision logic into scripts, JSON outputs, and regression fixtures.
    - `critic` or `code-reviewer`: challenge overreach, duplicated guidance, missing gates, and unsafe edits.
+   - For each spawned agent, declare its owned goal slices and required dashboard update fields.
 
 6. Integrate a pipeline plan.
    - Produce a concise plan with stages such as intake, evidence audit, architecture/risk plan, implementation, targeted tests, review, verifier signoff, and final report.
@@ -189,6 +284,7 @@ When this skill is active:
    - Spawn agents as background workers and immediately continue with ready leader work instead of waiting by default.
    - Poll or wait only at synchronization points: plan integration, shared-file merge, review gate, verifier gate, or when no other meaningful non-overlapping work exists.
    - When the tool/runtime reports that a subagent completed, read the subagent completion payload before making claims about that work.
+   - Update the central dashboard immediately after integrating any subagent payload.
    - Use bounded waits with a clear timeout. If an agent is slow, record it as pending and continue any safe branch that does not require that result.
    - Do not ask the user to wait for child-agent internals. Surface only actionable human requests, blockers, or checkpoint summaries.
 
@@ -250,8 +346,10 @@ subagent_result:
   role: <agent_type>
   logical_agent: <stable project/user agent name>
   run_id: <spawned background instance id>
+  owns_goal_slices: <goal/context areas owned by this agent>
   guidance_followed: <authoritative files/rules used>
   preflight_used: <environment_preflight id/path/status>
+  dashboard_update: <summary/open questions/next action to write to central dashboard>
   summary: <what was done or discovered>
   changed_files: <paths or none>
   evidence: <commands, checks, or references>

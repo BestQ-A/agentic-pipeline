@@ -47,6 +47,13 @@ The skill expects a project context and will audit local guidance, scripts,
 skills, agents, and validation surfaces before standardizing a project-specific
 workflow.
 
+Agentic Pipeline maintains a central project dashboard at
+`.pipeline/dashboard/agentic-pipeline-dashboard.json` and
+`.pipeline/dashboard/agentic-pipeline-dashboard.md`. The leader session uses it
+for macro/orchestration answers, while goal-specific questions are routed to the
+logical agent that owns the relevant goal slice when the dashboard is stale or
+incomplete.
+
 ---
 
 ## Devin CLI
@@ -112,6 +119,10 @@ Subagents are spawned with `run_subagent` (background by default) and results ar
 collected with `read_subagent`. Each subagent returns the `subagent_result` shape
 defined in the skill.
 
+The Devin skill uses the same central dashboard convention as Codex:
+`.pipeline/dashboard/agentic-pipeline-dashboard.json` and
+`.pipeline/dashboard/agentic-pipeline-dashboard.md`.
+
 ### Verify Devin sees the skill
 
 After installation, in a Devin session:
@@ -151,6 +162,7 @@ From this repository root:
 python C:\Users\61643\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py .\plugins\agentic-pipeline
 python C:\Users\61643\.codex\skills\.system\skill-creator\scripts\quick_validate.py .\plugins\agentic-pipeline\skills\agentic-pipeline
 .\plugins\agentic-pipeline\skills\agentic-pipeline\scripts\validate_agentic_pipeline_contract.ps1 -SkillRoot .\plugins\agentic-pipeline\skills\agentic-pipeline
+.\plugins\agentic-pipeline\skills\agentic-pipeline\scripts\update_agent_dashboard.ps1 -ProjectRoot . -LogicalAgent leader -Role leader -Status ready -OwnsGoalSlices orchestration -Objective "validate dashboard updater" -CurrentState dashboard_smoke -Summary "dashboard updater smoke test"
 ```
 
 ## Validate (Devin)
@@ -159,6 +171,7 @@ From this repository root:
 
 ```powershell
 .\.devin\skills\agentic-pipeline\scripts\validate_agentic_pipeline_contract.ps1 -SkillRoot .\.devin\skills\agentic-pipeline
+.\.devin\skills\agentic-pipeline\scripts\update_agent_dashboard.ps1 -ProjectRoot . -DashboardDir .pipeline\dashboard-devin-smoke -LogicalAgent devin-leader -Role leader -Status ready -OwnsGoalSlices orchestration -Objective "validate Devin dashboard updater" -CurrentState dashboard_smoke -Summary "Devin dashboard updater smoke test"
 ```
 
 ## License
