@@ -183,6 +183,7 @@ Default paths:
 
 ```text
 central_dashboard:
+  web: .pipeline/dashboard/agentic-pipeline-dashboard.html
   json: .pipeline/dashboard/agentic-pipeline-dashboard.json
   markdown: .pipeline/dashboard/agentic-pipeline-dashboard.md
 ```
@@ -229,10 +230,12 @@ Dashboard synchronization rules:
 
 - Create or update the dashboard before spawning implementation agents.
 - Update the dashboard after every subagent result, blocker, human-action request, routed question answer, and verifier decision.
+- Prefer the web dashboard for human reading. The HTML dashboard must render from the latest embedded snapshot and, when served over HTTP, dynamically refresh from `agentic-pipeline-dashboard.json`.
 - Before answering a user question, consult the dashboard and route to the owning agent when the dashboard is missing or stale.
 - Before final response, ensure the dashboard lists coverage, owners, current statuses, blockers, evidence, and retained artifacts.
 - If the dashboard cannot be written, the loop state is `blocked` for implementation/deploy/test claims; the leader may still explain the blocker and the exact write failure.
 - Prefer using `scripts/update_agent_dashboard.ps1` for dashboard writes. If the project needs richer behavior, evolve that script or create a project-local dashboard updater rather than relying on prose.
+- Use `scripts/serve_agent_dashboard.ps1` only when an HTTP view is useful. It defaults to `127.0.0.1`; use an explicit LAN host only when remote/mobile viewing is intended and acceptable for the project.
 
 ## Workflow
 

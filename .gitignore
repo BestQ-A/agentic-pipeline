@@ -1,6 +1,7 @@
 .omx/
 .omc/
 .claude/
+.pipeline/
 .codex/
 .agents/*
 !.agents/plugins/

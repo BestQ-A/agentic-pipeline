@@ -49,12 +49,26 @@ The skill expects a project context and will audit local guidance, scripts,
 skills, agents, and validation surfaces before standardizing a project-specific
 workflow.
 
-Agentic Pipeline maintains a central project dashboard at
-`.pipeline/dashboard/agentic-pipeline-dashboard.json` and
-`.pipeline/dashboard/agentic-pipeline-dashboard.md`. The leader session uses it
-for macro/orchestration answers, while goal-specific questions are routed to the
-logical agent that owns the relevant goal slice when the dashboard is stale or
-incomplete.
+Agentic Pipeline maintains a central project dashboard under
+`.pipeline/dashboard/`. The preferred human view is
+`agentic-pipeline-dashboard.html`; `agentic-pipeline-dashboard.json` is the live
+data source and `agentic-pipeline-dashboard.md` is the audit-friendly text copy.
+The leader session uses the dashboard for macro/orchestration answers, while
+goal-specific questions are routed to the logical agent that owns the relevant
+goal slice when the dashboard is stale or incomplete.
+
+For a dynamically refreshing browser view:
+
+```powershell
+.\plugins\agentic-pipeline\skills\agentic-pipeline\scripts\serve_agent_dashboard.ps1 -ProjectRoot .
+```
+
+The server listens on `127.0.0.1` by default. For future phone/LAN viewing, bind
+explicitly after deciding the project state can be exposed on the local network:
+
+```powershell
+.\plugins\agentic-pipeline\skills\agentic-pipeline\scripts\serve_agent_dashboard.ps1 -ProjectRoot . -Host 0.0.0.0 -Port 8765
+```
 
 ---
 
@@ -85,7 +99,8 @@ project. The skill keeps the same state-machine, preflight, dashboard, and
 goal-ownership contract as the Codex package.
 
 The central dashboard paths are shared across runtimes:
-`.pipeline/dashboard/agentic-pipeline-dashboard.json` and
+`.pipeline/dashboard/agentic-pipeline-dashboard.html`,
+`.pipeline/dashboard/agentic-pipeline-dashboard.json`, and
 `.pipeline/dashboard/agentic-pipeline-dashboard.md`.
 
 ---
@@ -154,7 +169,8 @@ collected with `read_subagent`. Each subagent returns the `subagent_result` shap
 defined in the skill.
 
 The Devin skill uses the same central dashboard convention as Codex:
-`.pipeline/dashboard/agentic-pipeline-dashboard.json` and
+`.pipeline/dashboard/agentic-pipeline-dashboard.html`,
+`.pipeline/dashboard/agentic-pipeline-dashboard.json`, and
 `.pipeline/dashboard/agentic-pipeline-dashboard.md`.
 
 ### Verify Devin sees the skill
@@ -178,6 +194,8 @@ Codex surface:
 - `plugins/agentic-pipeline/.codex-plugin/plugin.json`: Plugin manifest.
 - `plugins/agentic-pipeline/skills/agentic-pipeline/SKILL.md`: Codex skill instructions.
 - `plugins/agentic-pipeline/skills/agentic-pipeline/scripts/audit_project_surfaces.ps1`: Read-only project surface audit script.
+- `plugins/agentic-pipeline/skills/agentic-pipeline/scripts/update_agent_dashboard.ps1`: Writes JSON, HTML, and Markdown dashboard outputs.
+- `plugins/agentic-pipeline/skills/agentic-pipeline/scripts/serve_agent_dashboard.ps1`: Optional local HTTP server for the live web dashboard.
 
 Claude Code surface:
 
@@ -185,15 +203,18 @@ Claude Code surface:
 - `plugins/agentic-pipeline/.claude-plugin/plugin.json`: Claude Code plugin manifest.
 - `plugins/agentic-pipeline/skills/agentic-pipeline/SKILL.md`: Shared Codex/Claude skill instructions.
 - `plugins/agentic-pipeline/skills/agentic-pipeline/scripts/update_agent_dashboard.ps1`: Dashboard updater used by the shared skill.
+- `plugins/agentic-pipeline/skills/agentic-pipeline/scripts/serve_agent_dashboard.ps1`: Optional local HTTP server for the live web dashboard.
 
 Devin surface:
 
 - `.devin/skills/agentic-pipeline/SKILL.md`: Devin skill instructions (slash command `/agentic-pipeline`).
 - `.devin/skills/agentic-pipeline/scripts/audit_project_surfaces.ps1`: Same audit script, bundled with the Devin skill.
+- `.devin/skills/agentic-pipeline/scripts/update_agent_dashboard.ps1`: Writes JSON, HTML, and Markdown dashboard outputs.
+- `.devin/skills/agentic-pipeline/scripts/serve_agent_dashboard.ps1`: Optional local HTTP server for the live web dashboard.
 - `.devin/agents/<role>/AGENT.md`: Nine custom subagent profiles for the pipeline roles.
 - `scripts/install-devin.ps1` / `scripts/install-devin.sh`: Cross-platform installers for Devin (user or project scope).
 
-Runtime state, logs, caches, `.omx`, local credentials, and generated artifacts are intentionally excluded.
+Runtime state, logs, caches, `.pipeline`, `.omx`, local credentials, and generated artifacts are intentionally excluded.
 
 ## Validate (Codex)
 
@@ -205,6 +226,9 @@ python <codex-home>\skills\.system\skill-creator\scripts\quick_validate.py .\plu
 .\plugins\agentic-pipeline\skills\agentic-pipeline\scripts\validate_agentic_pipeline_contract.ps1 -SkillRoot .\plugins\agentic-pipeline\skills\agentic-pipeline
 .\plugins\agentic-pipeline\skills\agentic-pipeline\scripts\update_agent_dashboard.ps1 -ProjectRoot . -LogicalAgent leader -Role leader -Status ready -OwnsGoalSlices orchestration -Objective "validate dashboard updater" -CurrentState dashboard_smoke -Summary "dashboard updater smoke test"
 ```
+
+For manual browser preview, run `serve_agent_dashboard.ps1` from the usage
+section and stop it with `Ctrl+C`.
 
 ## Validate (Claude Code)
 

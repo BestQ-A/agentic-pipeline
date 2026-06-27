@@ -39,6 +39,8 @@ $requiredMarkers = [ordered]@{
     routeWhenSpecific = 'The leader must route or refresh before answering'
     goalOwnership = '## Goal Ownership And Question Routing'
     centralDashboard = '## Central Dashboard Contract'
+    webDashboard = 'Prefer the web dashboard for human reading'
+    serveDashboard = 'serve_agent_dashboard.ps1'
     dashboardUpdate = 'dashboard_update:'
     ownsGoalSlices = 'owns_goal_slices:'
 }

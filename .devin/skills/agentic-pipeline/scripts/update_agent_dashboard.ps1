@@ -87,6 +87,7 @@ $dashboardPath = Resolve-ContainedPath -Root $root -Path $DashboardDir
 New-Item -ItemType Directory -Force -Path $dashboardPath | Out-Null
 
 $jsonPath = Join-Path $dashboardPath 'agentic-pipeline-dashboard.json'
+$htmlPath = Join-Path $dashboardPath 'agentic-pipeline-dashboard.html'
 $mdPath = Join-Path $dashboardPath 'agentic-pipeline-dashboard.md'
 $now = [DateTime]::UtcNow.ToString('o')
 
@@ -167,9 +168,263 @@ if ($Decision) {
 $dashboard.updated_at = $now
 $dashboard | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $jsonPath -Encoding UTF8
 
+$embeddedJson = ($dashboard | ConvertTo-Json -Depth 12).Replace('</', '<\/')
+$htmlTemplate = @'
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentic Pipeline Dashboard</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #17191f;
+      --muted: #657085;
+      --line: #d8dde7;
+      --accent: #0f766e;
+      --blocked: #b42318;
+      --ready: #0f766e;
+      --pending: #6d5bd0;
+      --shadow: 0 1px 2px rgba(18, 25, 38, 0.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #101318;
+        --panel: #171b22;
+        --text: #eef2f7;
+        --muted: #a7b0c0;
+        --line: #2b3340;
+        --shadow: none;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: color-mix(in srgb, var(--panel) 94%, transparent);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+    }
+    .wrap { width: min(1120px, 100%); margin: 0 auto; padding: 16px; }
+    .topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    h1 { margin: 0; font-size: 20px; letter-spacing: 0; }
+    h2 { margin: 0 0 10px; font-size: 15px; letter-spacing: 0; }
+    .muted { color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+    .span-12 { grid-column: span 12; }
+    .span-8 { grid-column: span 8; }
+    .span-4 { grid-column: span 4; }
+    .status-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .status-ready, .status-complete { color: var(--ready); border-color: color-mix(in srgb, var(--ready) 40%, var(--line)); }
+    .status-blocked, .status-needs-human { color: var(--blocked); border-color: color-mix(in srgb, var(--blocked) 40%, var(--line)); }
+    .status-pending { color: var(--pending); border-color: color-mix(in srgb, var(--pending) 40%, var(--line)); }
+    .agent-list { display: grid; gap: 10px; }
+    .agent {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .agent-head { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
+    .agent-name { font-weight: 650; overflow-wrap: anywhere; }
+    .summary { margin-top: 8px; overflow-wrap: anywhere; }
+    .kv { display: grid; grid-template-columns: 120px 1fr; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+    .kv:first-child { border-top: 0; }
+    ul { margin: 8px 0 0; padding-left: 18px; }
+    li { margin: 4px 0; overflow-wrap: anywhere; }
+    code { font: 12px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--muted); }
+    @media (max-width: 760px) {
+      .wrap { padding: 12px; }
+      .grid { display: block; }
+      .panel { margin-bottom: 12px; }
+      .topline { align-items: start; flex-direction: column; }
+      .kv { grid-template-columns: 1fr; gap: 2px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap topline">
+      <div>
+        <h1>Agentic Pipeline Dashboard</h1>
+        <div class="muted" id="project"></div>
+      </div>
+      <div class="pill" id="refresh">loading</div>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="grid">
+      <div class="panel span-8">
+        <h2>Leader State</h2>
+        <div class="kv"><div class="muted">Objective</div><div id="objective"></div></div>
+        <div class="kv"><div class="muted">Current state</div><div id="current-state"></div></div>
+        <div class="kv"><div class="muted">Stop condition</div><div id="stop-condition"></div></div>
+      </div>
+      <div class="panel span-4">
+        <h2>Coverage</h2>
+        <div class="status-row" id="coverage"></div>
+      </div>
+      <div class="panel span-12">
+        <h2>Agent Updates</h2>
+        <div class="agent-list" id="agents"></div>
+      </div>
+      <div class="panel span-8">
+        <h2>Question Routes</h2>
+        <ul id="questions"></ul>
+      </div>
+      <div class="panel span-4">
+        <h2>Decisions</h2>
+        <ul id="decisions"></ul>
+      </div>
+    </section>
+  </main>
+  <script>
+    const embedded = __DASHBOARD_JSON__;
+    const jsonUrl = 'agentic-pipeline-dashboard.json';
+    const refreshMs = 5000;
+
+    function asArray(value) {
+      if (!value) return [];
+      return Array.isArray(value) ? value : [value];
+    }
+
+    function text(value, fallback = '') {
+      return value === null || value === undefined || value === '' ? fallback : String(value);
+    }
+
+    function setText(id, value, fallback = '') {
+      document.getElementById(id).textContent = text(value, fallback);
+    }
+
+    function pill(label, status) {
+      const el = document.createElement('span');
+      el.className = `pill status-${text(status, '').replace(/\s+/g, '-').toLowerCase()}`;
+      el.textContent = label;
+      return el;
+    }
+
+    function listItems(target, rows, formatter) {
+      target.replaceChildren();
+      if (!rows.length) {
+        const li = document.createElement('li');
+        li.className = 'muted';
+        li.textContent = 'None';
+        target.appendChild(li);
+        return;
+      }
+      rows.forEach(row => {
+        const li = document.createElement('li');
+        li.textContent = formatter(row);
+        target.appendChild(li);
+      });
+    }
+
+    function render(data, source) {
+      setText('project', data.project_root, 'No project root recorded');
+      setText('objective', data.leader_state && data.leader_state.objective, 'No objective recorded');
+      setText('current-state', data.leader_state && data.leader_state.current_state, 'No state recorded');
+      setText('stop-condition', data.leader_state && data.leader_state.stop_condition, 'No stop condition recorded');
+      setText('refresh', `${source} - ${text(data.updated_at, 'unknown update time')}`);
+
+      const coverage = document.getElementById('coverage');
+      coverage.replaceChildren();
+      asArray(data.coverage && data.coverage.active_logical_agents).forEach(agent => coverage.appendChild(pill(agent, 'ready')));
+      if (!coverage.childElementCount) coverage.appendChild(pill('no agents recorded', 'pending'));
+
+      const agents = document.getElementById('agents');
+      agents.replaceChildren();
+      asArray(data.agent_updates).sort((a, b) => text(a.logical_agent).localeCompare(text(b.logical_agent))).forEach(agent => {
+        const card = document.createElement('article');
+        card.className = 'agent';
+        const head = document.createElement('div');
+        head.className = 'agent-head';
+        const name = document.createElement('div');
+        name.className = 'agent-name';
+        name.textContent = `${text(agent.logical_agent, 'unknown-agent')} - ${text(agent.role, 'role')}`;
+        head.appendChild(name);
+        head.appendChild(pill(text(agent.status, 'unknown'), agent.status));
+        card.appendChild(head);
+        const summary = document.createElement('div');
+        summary.className = 'summary';
+        summary.textContent = text(agent.summary, 'No summary recorded');
+        card.appendChild(summary);
+        const slices = asArray(agent.owns_goal_slices).join(', ');
+        if (slices) {
+          const owns = document.createElement('div');
+          owns.className = 'muted summary';
+          owns.textContent = `Owns: ${slices}`;
+          card.appendChild(owns);
+        }
+        if (agent.next_action) {
+          const next = document.createElement('div');
+          next.className = 'muted summary';
+          next.textContent = `Next: ${agent.next_action}`;
+          card.appendChild(next);
+        }
+        agents.appendChild(card);
+      });
+      if (!agents.childElementCount) {
+        const empty = document.createElement('div');
+        empty.className = 'muted';
+        empty.textContent = 'No agent updates recorded';
+        agents.appendChild(empty);
+      }
+
+      listItems(document.getElementById('questions'), asArray(data.question_routes), row => `${text(row.status, 'unknown')}: ${text(row.question)} -> ${text(row.owner)}`);
+      listItems(document.getElementById('decisions'), asArray(data.decisions), row => `${text(row.owner, 'unknown')}: ${text(row.decision)}`);
+    }
+
+    async function refresh() {
+      if (location.protocol === 'file:') {
+        render(embedded, 'embedded snapshot');
+        return;
+      }
+      try {
+        const response = await fetch(`${jsonUrl}?t=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        render(await response.json(), 'live json');
+      } catch (error) {
+        render(embedded, `embedded fallback (${error.message})`);
+      }
+    }
+
+    refresh();
+    setInterval(refresh, refreshMs);
+  </script>
+</body>
+</html>
+'@
+$html = $htmlTemplate.Replace('__DASHBOARD_JSON__', $embeddedJson)
+Set-Content -LiteralPath $htmlPath -Value $html -Encoding UTF8
+
 $lines = [System.Collections.Generic.List[string]]::new()
 $lines.Add('# Agentic Pipeline Dashboard') | Out-Null
 $lines.Add('') | Out-Null
+$lines.Add("- Web: $htmlPath") | Out-Null
 $lines.Add("- Project: $root") | Out-Null
 $lines.Add("- Updated: $now") | Out-Null
 $lines.Add("- Objective: $($dashboard.leader_state.objective)") | Out-Null
@@ -198,6 +453,7 @@ Set-Content -LiteralPath $mdPath -Value $lines -Encoding UTF8
 [pscustomobject]@{
     status = 'pass'
     dashboard_json = $jsonPath
+    dashboard_html = $htmlPath
     dashboard_markdown = $mdPath
     logical_agent = $LogicalAgent
     updated_at = $now
