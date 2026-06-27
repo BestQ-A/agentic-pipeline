@@ -150,6 +150,15 @@ From this repository root:
 ```powershell
 python C:\Users\61643\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py .\plugins\agentic-pipeline
 python C:\Users\61643\.codex\skills\.system\skill-creator\scripts\quick_validate.py .\plugins\agentic-pipeline\skills\agentic-pipeline
+.\plugins\agentic-pipeline\skills\agentic-pipeline\scripts\validate_agentic_pipeline_contract.ps1 -SkillRoot .\plugins\agentic-pipeline\skills\agentic-pipeline
+```
+
+## Validate (Devin)
+
+From this repository root:
+
+```powershell
+.\.devin\skills\agentic-pipeline\scripts\validate_agentic_pipeline_contract.ps1 -SkillRoot .\.devin\skills\agentic-pipeline
 ```
 
 ## License

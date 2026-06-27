@@ -44,6 +44,83 @@ loop_state:
   stop_condition: <complete|blocked|unsafe|needs-human>
 ```
 
+## Guidance Adherence Gate
+
+This skill exists to override ad hoc model habits with project-local operating logic. Do not rely on a subagent "remembering" to behave correctly. Make the required behavior explicit, observable, and rejectable.
+
+Before any implementation, build, test, run, deploy, destructive command, or external handoff, the leader must establish a guidance binding:
+
+```text
+guidance_binding:
+  project_root: <absolute path>
+  authoritative_sources:
+    - <AGENTS.md, folder-local AGENTS.md, project skill, script, rule, or plan path>
+  applicable_rules:
+    - <short rule copied or paraphrased from the source>
+  required_preflight:
+    - <environment, artifact, dependency, process, device, config, credential, or permission check>
+  allowed_actions:
+    - <commands or edit scopes allowed after preflight passes>
+  forbidden_actions:
+    - <actions disallowed until a specific state is reached>
+  evidence_required:
+    - <JSON report, log, command output, file reference, screenshot, or exact string check>
+  decision_rule:
+    pass: <state transition if evidence is good>
+    fail: <blocked/unsafe/needs-human transition if evidence is bad>
+```
+
+Required behavior:
+
+- No guidance binding means no downstream action. The next transition is `evidence_audit`, not implementation.
+- The binding must name exact files or scripts. Vague phrases like "follow project rules" are not enough.
+- If `AGENTS.md` and a project skill disagree, the leader must state the conflict and choose the narrower, more local, or more recently explicit rule before acting.
+- If the environment is part of correctness, the environment check is mandatory evidence, not a nice-to-have. Examples: running processes that lock DLLs, active config file selected by launch cwd, device connection state, service ports, credentials, branch cleanliness, build output directory, and deployment target writability.
+- A subagent handoff without a guidance binding is invalid. The leader must revise the handoff before spawning or sending work.
+
+## Environment Preflight Gate
+
+Every project pipeline must define an environment preflight before any action whose result depends on local machine state.
+
+Minimum preflight shape:
+
+```text
+environment_preflight:
+  status: pass|blocked|unsafe|needs-human
+  checked_at: <timestamp>
+  project_root: <absolute path>
+  command: <script or command used>
+  checks:
+    - name: <check name>
+      expected: <required condition>
+      observed: <actual condition>
+      status: pass|fail|unknown>
+      evidence: <path/log/output>
+  allowed_next_states:
+    - <state names>
+  blocked_actions:
+    - <build|run|deploy|test|external-write|destructive-edit>
+  remediation:
+    - <automatic safe action or exact human action request>
+```
+
+Decision rules:
+
+- `pass` permits only the actions listed in `allowed_next_states`.
+- `blocked` means the subagent may inspect, edit docs/scripts, or produce a remediation plan, but must not claim build/run/deploy/test success for the blocked branch.
+- `unsafe` stops execution until the unsafe condition is resolved.
+- `needs-human` must use the Human Cooperation Protocol with exact user action and success signal.
+- If a preflight script does not exist for a recurring environment check, create the script/checker before repeating the manual check.
+
+Typical checks to encode in project skills/scripts:
+
+- Required tools and versions are available.
+- The active config file is the one the executable or tool will actually read.
+- Build output and deployment artifact paths are known.
+- Target artifacts are not locked by running processes.
+- Runtime services, devices, displays, ports, or credentials match the intended test.
+- Working tree state is understood before edits, commits, or pushes.
+
 ## Leader Contract
 
 When this skill is active:
@@ -51,6 +128,8 @@ When this skill is active:
 - Do not directly implement project changes in the leader lane. Leader-only bootstrapping means non-mutating setup: goal ledger, audit runs, plan integration, handoff prompts, and verification routing.
 - Keep a visible goal statement with target result, constraints, acceptance criteria, evidence required, and stop condition.
 - Keep a visible loop state. State the current named state, the next allowed transition, validation evidence, and stop condition before giving process detail.
+- Keep a visible guidance binding and environment preflight status before assigning implementation, build, run, deploy, or validation work.
+- Reject any subagent result that does not report which guidance sources it followed and what preflight evidence it used.
 - Use fixed logical agents for recurring pipeline roles. Prefer existing project/user agent definitions and stable role names over ad hoc temporary agents; a spawned `run_subagent` ID is only a background run instance for a fixed logical agent.
 - Use `run_subagent` for independent work slices. Always set `profile` (or `agent`) to an installed role such as `explore`, `planner`, `architect`, `executor`, `test-engineer`, `code-reviewer`, `verifier`, or `writer`, and include the fixed logical agent name in the handoff prompt. Prefer `is_background: true` so the leader lane stays non-blocking.
 - Keep the leader lane non-blocking: do not wait on a subagent unless the next leader action strictly depends on that specific result; while subagents run, advance non-overlapping planning, integration, validation setup, or other ready work.
@@ -91,12 +170,18 @@ Devin exposes subagents through the `run_subagent` tool and the `read_subagent` 
    - Treat the active project root and folder-local guidance as authoritative over assumptions.
    - If the evidence surface is too weak for repeated use, create a script/checker first instead of continuing with one-off reasoning.
 
-3. Define the loop before delegation.
+3. Bind guidance and preflight before delegation.
+   - Produce the `guidance_binding` object from exact project files and skill paths.
+   - Produce or run the `environment_preflight` object for the current task branch.
+   - If no project preflight exists but machine state can affect correctness, create a project-local preflight script/check first.
+   - Mark unavailable or failed preflight checks as `blocked`, `unsafe`, or `needs-human`; do not downgrade them to warnings.
+
+4. Define the loop before delegation.
    - State current state, target state, allowed transitions, validation signal, failure states, and durable learning target.
    - Decide what artifact should improve if this loop succeeds or fails: script, fixture, local guidance, project skill, fixed agent, or team definition.
    - If this cannot be stated concretely, route to `planner` or `architect` before implementation subagents.
 
-4. Spawn discovery and planning subagents.
+5. Spawn discovery and planning subagents.
    - First map existing project agents and skills. Reuse matching fixed agents before creating any new role.
    - `explore`: map current project guidance, agents, skills, scripts, and test commands.
    - `planner`: propose a stage-by-stage research/development pipeline with artifacts and gates.
@@ -104,36 +189,39 @@ Devin exposes subagents through the `run_subagent` tool and the `read_subagent` 
    - `scriptification-engineer` or `test-engineer`: turn recurring diagnostic or decision logic into scripts, JSON outputs, and regression fixtures.
    - `critic` or `code-reviewer`: challenge overreach, duplicated guidance, missing gates, and unsafe edits.
 
-5. Integrate a pipeline plan.
+6. Integrate a pipeline plan.
    - Produce a concise plan with stages such as intake, evidence audit, architecture/risk plan, implementation, targeted tests, review, verifier signoff, and final report.
    - For each stage, specify the owner agent, required artifacts, entry criteria, exit criteria, and validation command or evidence.
    - For each state transition, specify the decision rule. A stage without a decision rule is not yet a reliable loop.
+   - For every build/run/deploy/test state, specify the preflight command and blocked-state behavior.
    - Define fixed logical agents for the pipeline, for example `<project>-explorer`, `<project>-planner`, `<project>-architect`, `<project>-executor`, `<project>-test-engineer`, and `<project>-verifier`.
    - Prefer project-local `.agents/skills/<role-workflow>` or `.devin/skills/<role-workflow>` for reusable role workflows and project-local guidance files for durable rules.
    - Prefer script-local or skill-local regression fixtures for successful visual/log/runtime classifications so the loop can learn from practice.
 
-6. Spawn implementation subagents.
+7. Spawn implementation subagents.
    - `executor`: make bounded project-local edits to agent definitions, folder rules, skills, scripts, or guidance.
    - `test-engineer`: add or refine repeatable checks for the pipeline and guidance discovery where practical.
    - `writer`: tighten guidance text without expanding scope.
    - `scriptification-engineer`: build or harden decision software for recurring checks; do not leave repeated decisions as prose-only instructions.
    - If the needed fixed logical agent does not exist yet, create or update the project-level agent/skill definition (under `.devin/agents/<role>/AGENT.md` or `.agents/skills/<role-workflow>/SKILL.md`) as a pipeline artifact before relying on repeated temporary handoffs.
    - Assign non-overlapping files when possible. If two agents need the same file, serialize edits through the leader.
+   - Include the guidance binding, preflight status, allowed actions, forbidden actions, and required result schema in every handoff.
+   - If the preflight status is not `pass`, implementation agents may only edit the retained pipeline artifacts that fix the missing check or document the blocked state.
 
-7. Supervise background subagents without blocking.
+8. Supervise background subagents without blocking.
    - Spawn subagents with `is_background: true` and immediately continue with ready leader work instead of waiting by default.
    - Call `read_subagent` only at synchronization points: plan integration, shared-file merge, review gate, verifier gate, or when no other meaningful non-overlapping work exists.
    - When a subagent completion notification arrives, call `read_subagent` to read the result payload before making claims about that work.
    - Use bounded waits with a clear timeout. If a subagent is slow, record it as pending and continue any safe branch that does not require that result.
    - Do not ask the user to wait for child-agent internals. Surface only actionable human requests, blockers, or checkpoint summaries.
 
-8. Verify and review.
+9. Verify and review.
    - Run the smallest validation that proves each claim: syntax checks, project tests, lint/typecheck, script dry runs, or exact-string checks.
    - Spawn `code-reviewer` for changed guidance/skill files when the change is broad.
-   - Spawn `verifier` to confirm that the final pipeline is complete, non-duplicative, project-scoped, and has evidence.
+   - Spawn `verifier` to confirm that the final pipeline is complete, non-duplicative, project-scoped, has evidence, and rejects action without guidance/preflight evidence.
    - Run at least one loop dry run or replay against a known scenario when the pipeline includes a new script, state transition, or classifier.
 
-9. Finalize.
+10. Finalize.
    - Report changed files, the standardized pipeline, validation evidence, and remaining risks.
    - Report the final loop state and what was retained for future runs: skill, script, fixture, artifact, project rule, team role, or memory note.
    - Do not mark completion if the leader had to implement the substantive work directly because spawning was unavailable.
@@ -149,6 +237,8 @@ The pipeline should grow through use.
 - Use a durability ladder rather than creating global sprawl: one-off artifact -> script/check -> local guidance -> project skill -> fixed agent/team definition -> user-level/global skill only when explicitly requested.
 - Do not retain noise. A retained artifact should answer a future decision, reproduce a failure, or validate a transition.
 - When a loop fails, record the smallest useful correction: missing state, missing evidence, bad decision rule, wrong capture point, weak script, unsafe transition, or unclear ownership.
+- When user correction reveals that an agent ignored environment reality or project guidance, update the owning project skill with a new preflight check, decision rule, or fixture. Do not merely add prose reminding agents to be careful.
+- Successful and failed lessons must include enough replay data for a future agent to classify the condition without guessing: command, observed output, expected output, state transition, and retained artifact path.
 - After a loop succeeds repeatedly, promote it from prompt/process into a skill, script, test, or fixed team role.
 
 ## Background Subagent Supervision
@@ -183,6 +273,8 @@ subagent_result:
   role: <profile name>
   logical_agent: <stable project/user agent name>
   run_id: <spawned background agent_id>
+  guidance_followed: <authoritative files/rules used>
+  preflight_used: <environment_preflight id/path/status>
   summary: <what was done or discovered>
   changed_files: <paths or none>
   evidence: <commands, checks, or references>
