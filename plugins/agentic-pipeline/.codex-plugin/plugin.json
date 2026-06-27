@@ -1,6 +1,6 @@
 {
   "name": "agentic-pipeline",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Delegated project pipeline standardization for Codex.",
   "author": {
     "name": "SkylarHu",
@@ -8,6 +8,7 @@
   },
   "homepage": "https://github.com/BestQ-A/agentic-pipeline",
   "repository": "https://github.com/BestQ-A/agentic-pipeline",
+  "license": "Apache-2.0",
   "keywords": [
     "codex",
     "omx",

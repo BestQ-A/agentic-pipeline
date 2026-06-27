@@ -49,6 +49,6 @@ python C:\Users\61643\.codex\skills\.system\plugin-creator\scripts\validate_plug
 python C:\Users\61643\.codex\skills\.system\skill-creator\scripts\quick_validate.py .\plugins\agentic-pipeline\skills\agentic-pipeline
 ```
 
-## Release Notes
+## License
 
-This package is local-install ready after validation passes. Before a public open-source release, choose and add a license file deliberately.
+This project is released under the Apache License 2.0, matching the Codex CLI license.
