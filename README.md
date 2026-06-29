@@ -1,17 +1,22 @@
 # Agentic Pipeline
 
 Agentic Pipeline packages the `$agentic-pipeline` Codex skill, a Claude Code
-plugin skill, and a parallel Devin skill `/agentic-pipeline` for reusable
-project pipeline standardization.
+plugin skill, a Hermes Agent skill, and a parallel Devin skill
+`/agentic-pipeline` for reusable project pipeline standardization.
 It helps an agent define project workflow states, delegate role-agent work,
 capture validation evidence, and retain repeatable project artifacts.
+The skill now treats loop engineering as a completeness contract: discovery,
+handoff isolation, independent verification, persistent state, scheduling,
+connector scope, budget caps, and human checkpoints must be explicit before a
+workflow is called an unattended loop.
 
-Three runtimes are supported:
+Four runtimes are supported:
 
 | Runtime | Trigger | Skill location | Subagent mechanism |
 | --- | --- | --- | --- |
 | Codex CLI | `$agentic-pipeline` | `plugins/agentic-pipeline/skills/agentic-pipeline/SKILL.md` | native subagents / OMX |
 | Claude Code | installed skill/plugin surface | `plugins/agentic-pipeline/skills/agentic-pipeline/SKILL.md` | Claude Code task/subagent surface when available |
+| Hermes Agent | `hermes -s agentic-pipeline` or `/skill agentic-pipeline` | `.hermes/skills/software-development/agentic-pipeline/SKILL.md` | `delegate_task`, `hermes -w`, cron, kanban |
 | Devin CLI | `/agentic-pipeline` | `.devin/skills/agentic-pipeline/SKILL.md` | `run_subagent` + custom `AGENT.md` profiles |
 
 ---
@@ -102,6 +107,70 @@ The central dashboard paths are shared across runtimes:
 `.pipeline/dashboard/agentic-pipeline-dashboard.html`,
 `.pipeline/dashboard/agentic-pipeline-dashboard.json`, and
 `.pipeline/dashboard/agentic-pipeline-dashboard.md`.
+
+---
+
+## Hermes Agent
+
+The repo ships a Hermes-native skill at
+`.hermes/skills/software-development/agentic-pipeline/SKILL.md`. It adapts the
+same loop-engineering contract to Hermes primitives: `delegate_task` for quick
+subagents, `hermes -w` for isolated worktrees, `cronjob` / `hermes cron` for
+scheduling, and `kanban` for durable multi-worker queues.
+
+### Install (Hermes, user/global scope)
+
+```powershell
+git clone https://github.com/BestQ-A/agentic-pipeline C:\tools\agentic-pipeline
+cd C:\tools\agentic-pipeline
+.\scripts\install-hermes.ps1
+.\scripts\install-hermes.ps1 -Force
+```
+
+```bash
+git clone https://github.com/BestQ-A/agentic-pipeline ~/tools/agentic-pipeline
+cd ~/tools/agentic-pipeline
+chmod +x scripts/install-hermes.sh
+./scripts/install-hermes.sh
+./scripts/install-hermes.sh --force
+```
+
+Targets:
+
+- Windows: `%LOCALAPPDATA%\hermes\skills\software-development\agentic-pipeline\`
+- Linux/macOS: `${HERMES_HOME:-$HOME/.hermes}/skills/software-development/agentic-pipeline/`
+
+### Install (Hermes, project scope)
+
+```powershell
+.\scripts\install-hermes.ps1 -Scope Project
+```
+
+```bash
+./scripts/install-hermes.sh --project
+```
+
+This copies the skill into the current project's `.hermes/skills/` directory so
+the project can carry the workflow with it.
+
+### Use (Hermes)
+
+Start a new Hermes session or reload skills, then:
+
+```text
+/skill agentic-pipeline
+```
+
+or preload it from the command line:
+
+```powershell
+hermes -s agentic-pipeline
+hermes -s agentic-pipeline -z "Standardize this project's agent pipeline."
+```
+
+The Hermes skill keeps the shared dashboard convention under
+`.pipeline/dashboard/` and uses the bundled scripts from its installed skill
+directory.
 
 ---
 
@@ -205,6 +274,15 @@ Claude Code surface:
 - `plugins/agentic-pipeline/skills/agentic-pipeline/scripts/update_agent_dashboard.ps1`: Dashboard updater used by the shared skill.
 - `plugins/agentic-pipeline/skills/agentic-pipeline/scripts/serve_agent_dashboard.ps1`: Optional local HTTP server for the live web dashboard.
 
+Hermes Agent surface:
+
+- `.hermes/skills/software-development/agentic-pipeline/SKILL.md`: Hermes Agent skill instructions.
+- `.hermes/skills/software-development/agentic-pipeline/scripts/audit_project_surfaces.ps1`: Read-only project surface audit script, including `.hermes/skills`.
+- `.hermes/skills/software-development/agentic-pipeline/scripts/update_agent_dashboard.ps1`: Dashboard updater.
+- `.hermes/skills/software-development/agentic-pipeline/scripts/serve_agent_dashboard.ps1`: Optional local HTTP server for the live web dashboard.
+- `.hermes/skills/software-development/agentic-pipeline/scripts/validate_agentic_pipeline_contract.ps1`: Hermes skill contract validator.
+- `scripts/install-hermes.ps1` / `scripts/install-hermes.sh`: Cross-platform installers for Hermes user or project scope.
+
 Devin surface:
 
 - `.devin/skills/agentic-pipeline/SKILL.md`: Devin skill instructions (slash command `/agentic-pipeline`).
@@ -237,6 +315,22 @@ From this repository root:
 ```powershell
 claude plugin validate .\plugins\agentic-pipeline --strict
 claude plugin validate .\.claude-plugin\marketplace.json --strict
+```
+
+## Validate (Hermes Agent)
+
+From this repository root:
+
+```powershell
+.\.hermes\skills\software-development\agentic-pipeline\scripts\validate_agentic_pipeline_contract.ps1 -SkillRoot .\.hermes\skills\software-development\agentic-pipeline
+.\scripts\install-hermes.ps1 -Force
+hermes skills list --source all
+```
+
+Then start a fresh Hermes session and load:
+
+```text
+/skill agentic-pipeline
 ```
 
 ## Validate (Devin)

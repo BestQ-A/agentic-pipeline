@@ -22,6 +22,41 @@ This same skill can be packaged for Codex CLI and Claude Code.
 
 Reliable agent performance comes from explicit state spaces, repeatable observe-plan-act-verify loops, and durable capture of lessons into software artifacts. Keep this operational: state, transition, evidence, decision rule, retained artifact, and stop condition. A first loop can be weak; it must be able to run, record outcomes, absorb failures, preserve successful patterns, and become stronger over repeated real tasks.
 
+## Loop Engineering Completeness Gate
+
+A pipeline is not a loop merely because an agent can be rerun. Before calling a workflow a loop, prove that it contains the six operating parts and that each part has evidence.
+
+```text
+loop_engineering_gate:
+  discovery_source: <skill, query, queue, CI, issues, commits, inbox, or monitor that finds work>
+  handoff_isolation: <one worktree, branch, sandbox, or serialized edit lane per independent task>
+  verification_check: <independent evaluator, deterministic gate, test, screenshot, or review that can reject>
+  persistence_state: <dashboard, state file, issue board, inbox, PR, or artifact that survives context reset>
+  scheduling_trigger: <timer, event, manual checkpoint, or explicit reason scheduling is intentionally absent>
+  connector_scope: <local filesystem only or named external systems/connectors used for discovery/action>
+  budget_caps: <per-run budget, daily budget, retry cap, or explicit bounded substitute>
+  human_checkpoint: <where the loop stops for human judgment before merge/delete/deploy/external write>
+```
+
+Completeness rules:
+
+- A missing `verification_check` is a nodding loop. The same agent that generated the output must not be the final judge of that output.
+- A missing `persistence_state` is an amnesiac loop. Useful state must land outside the chat/context window.
+- A missing or intentionally absent `scheduling_trigger` is a manual loop. It can still be useful, but report it as a manual pipeline until a real trigger exists.
+- A missing `discovery_source` is a blind loop. Teach discovery into a skill or script instead of relying on the human to hand-pick every turn.
+- Missing `handoff_isolation` under parallel work is a tangled loop. Use isolated worktrees, branches, sandboxes, or serialize edits before spawning parallel writers.
+- A loop without `budget_caps` can spend indefinitely; a loop without `human_checkpoint` can quietly surrender judgment. Both must be explicit before unattended operation.
+
+Evaluator rules:
+
+- Tune the evaluator as a skeptic. Its default stance is reject until evidence passes, not praise unless something looks wrong.
+- Prefer acting verification over reading-only review. For UI work, open the page, click, inspect, and capture screenshots; for code, run the smallest relevant tests or deterministic gates.
+- Use a fresh role, run, or model for final stop-condition judgment when the runtime supports it. If not available, name the limitation and require deterministic evidence plus human checkpoint.
+
+Growth rule:
+
+- Grow loops in this order: first one finding end to end, then stronger discovery, then stronger verification, then scheduling, then parallelism. A loop earns more parallel agents only after its evaluator has caught real or fixture-backed failures.
+
 ## State Space Ledger
 
 Every pipeline should be modeled as a state machine before it becomes a team plan.
@@ -242,13 +277,15 @@ Dashboard synchronization rules:
 1. Establish the mission ledger.
    - Write the current goal in one paragraph.
    - Define success criteria for a standardized project pipeline: stages, role ownership, local rules, local skills, validation commands, and review gates.
+   - Fill the `loop_engineering_gate`: discovery source, handoff isolation, verification check, persistence state, scheduling trigger, connector scope, budget caps, and human checkpoint.
+   - Classify any missing part as an explicit anti-pattern risk: nodding, amnesiac, manual, blind, or tangled loop.
    - Define the initial loop state, allowed state transitions, evidence required per transition, and retention rule for successful iterations.
    - Identify irreversible or external-production boundaries.
    - Define the initial `goal_ownership_map` and central dashboard path.
 
 2. Capture repeatable project evidence.
    - Run `scripts/audit_project_surfaces.ps1 -ProjectRoot <path>` from this skill before assigning implementation work.
-   - Use the report to identify existing `AGENTS.md`, `CLAUDE.md`, `.codex/agents`, `.agents/skills`, `.codex/skills`, `rules`, scripts, tests, package/build commands, loop artifacts, and retained context.
+   - Use the report to identify existing `AGENTS.md`, `CLAUDE.md`, `.codex/agents`, `.agents/skills`, `.hermes/skills`, `.codex/skills`, `.devin/skills`, `.devin/agents`, `rules`, scripts, tests, package/build commands, loop artifacts, and retained context.
    - Treat the active project root and folder-local guidance as authoritative over assumptions.
    - If the evidence surface is too weak for repeated use, create a script/checker first instead of continuing with one-off reasoning.
 
@@ -303,7 +340,8 @@ Dashboard synchronization rules:
 9. Verify and review.
    - Run the smallest validation that proves each claim: skill validators, syntax checks, project tests, lint/typecheck, script dry runs, or exact-string checks.
    - Spawn `code-reviewer` for changed guidance/skill files when the change is broad.
-   - Spawn `verifier` to confirm that the final pipeline is complete, non-duplicative, project-scoped, has evidence, and rejects action without guidance/preflight evidence.
+   - Spawn `verifier` to confirm that the final pipeline is complete, non-duplicative, project-scoped, has evidence, rejects action without guidance/preflight evidence, and passes the `loop_engineering_gate`.
+   - Verify that the evaluator acted on evidence where practical, budget caps are explicit, and at least one human checkpoint remains before merge/delete/deploy/external write.
    - Run at least one loop dry run or replay against a known scenario when the pipeline includes a new script, state transition, or classifier.
 
 10. Finalize.
@@ -416,6 +454,7 @@ Review and improve only the artifacts relevant to the active project:
 - Folder-local rule files under `rules`, `.cursor/rules`, `.windsurf/rules`, or equivalent directories when present.
 - Native role prompts under `.codex/agents` or user-level `.codex/agents` only when the request is explicitly user-level.
 - Project skills under `.agents/skills/<skill-name>`.
+- Hermes project skills under `.hermes/skills/<category>/<skill-name>`.
 - Reusable scripts under project `scripts` or skill-local `scripts`.
 - Loop/context/artifact surfaces under `.omx/context`, `.omx/artifacts`, `.omx/state`, or equivalent project-local state only when they are intentionally part of the workflow.
 - Regression fixtures and known-good/known-bad examples that let scripts replay prior practice.

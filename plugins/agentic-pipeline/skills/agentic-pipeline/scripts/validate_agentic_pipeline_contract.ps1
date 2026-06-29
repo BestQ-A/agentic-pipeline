@@ -43,6 +43,22 @@ $requiredMarkers = [ordered]@{
     serveDashboard = 'serve_agent_dashboard.ps1'
     dashboardUpdate = 'dashboard_update:'
     ownsGoalSlices = 'owns_goal_slices:'
+    loopEngineeringGate = '## Loop Engineering Completeness Gate'
+    loopEngineeringShape = 'loop_engineering_gate:'
+    discoverySource = 'discovery_source:'
+    handoffIsolation = 'handoff_isolation:'
+    verificationCheck = 'verification_check:'
+    persistenceState = 'persistence_state:'
+    schedulingTrigger = 'scheduling_trigger:'
+    budgetCaps = 'budget_caps:'
+    humanCheckpoint = 'human_checkpoint:'
+    noddingLoop = 'nodding loop'
+    amnesiacLoop = 'amnesiac loop'
+    manualLoop = 'manual loop'
+    blindLoop = 'blind loop'
+    tangledLoop = 'tangled loop'
+    actingVerification = 'Prefer acting verification over reading-only review'
+    growthRule = 'Grow loops in this order'
 }
 
 foreach ($entry in $requiredMarkers.GetEnumerator()) {

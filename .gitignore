@@ -3,6 +3,9 @@
 .claude/
 .pipeline/
 .codex/
+.hermes/*
+!.hermes/skills/
+!.hermes/skills/**
 .agents/*
 !.agents/plugins/
 !.agents/plugins/marketplace.json
